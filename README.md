@@ -20,17 +20,39 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
+## 🚀 Features
 
-To learn more about Next.js, take a look at the following resources:
+### 🧑‍💼 Manager Dashboard
+- **Product Management**
+    - Add, edit, and delete products
+    - Fields: name, description, image, price, quantity, category
+- **Order Management**
+    - View all customer orders
+    - Update order statuses (Processing → Shipped → Delivered)
+    - View customer details for each order
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 🛒 Customer Experience
+- **Product Browsing & Search**
+    - View products as cards (image, name, short description, price, availability)
+    - Filter/search by name, category, and price range
+- **Order Placement**
+    - Detailed product pages
+    - Add to cart and place orders
+    - View past orders and current order status
+- **Feedback & Ratings**
+    - Rate products (1–5 stars)
+    - Submit brief reviews
+    - See average ratings and user reviews
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🔐 Authentication & Authorization
+- **Role-based access control** with distinct dashboards
+- **User registration & login**
+- **Google OAuth** login (optional)
+- **Admin override access** (optional)
+- **Secure password storage**
+- Session management and logout
+- Displays logged-in user's name
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
