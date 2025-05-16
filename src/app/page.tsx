@@ -1,103 +1,320 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Prisma } from '@prisma/client';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { ShoppingBag, ShoppingCart, Package, Users, Star } from 'lucide-react';
+
+// Define the ProductCategory type
+type ProductCategory = 'ELECTRONICS' | 'CLOTHING' | 'FOOD' | 'BOOKS' | 'OTHER';
+const ProductCategory = {
+  ELECTRONICS: 'ELECTRONICS',
+  CLOTHING: 'CLOTHING',
+  FOOD: 'FOOD',
+  BOOKS: 'BOOKS',
+  OTHER: 'OTHER'
+} as const;
+
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  image: string | null;
+  price: number;
+  stock: number;
+  category: ProductCategory;
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [products, setProducts] = useState<Product[]>([]);
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState<string>('');
+  const [minPrice, setMinPrice] = useState<string>('');
+  const [maxPrice, setMaxPrice] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [addingToCart, setAddingToCart] = useState<string | null>(null);
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    if (session) {
+      fetchProducts();
+    } else if (status !== 'loading') {
+      setLoading(false);
+    }
+  }, [search, category, minPrice, maxPrice, session, status]);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (search) params.append('search', search);
+      if (category) params.append('category', category);
+      if (minPrice) params.append('minPrice', minPrice);
+      if (maxPrice) params.append('maxPrice', maxPrice);
+
+      const response = await fetch(`/api/products?${params.toString()}`);
+      const data = await response.json();
+      setProducts(data);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addToCart = async (productId: string) => {
+    if (!session) {
+      router.push('/auth/signin');
+      return;
+    }
+
+    try {
+      setAddingToCart(productId);
+      const response = await fetch('/api/cart', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          productId,
+          quantity: 1,
+        }),
+      });
+
+      if (response.ok) {
+        // You can add a success notification here if you want
+        console.log('Product added to cart');
+      } else {
+        console.error('Failed to add product to cart');
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+    } finally {
+      setAddingToCart(null);
+    }
+  };
+
+  // Loading state
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin h-12 w-12 border-4 border-blue-600 rounded-full border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  // Not authenticated - show landing page
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+        <div className="max-w-6xl mx-auto px-4 py-16">
+          {/* Hero Section */}
+          <div className="text-center mb-16">
+            <h1 className="text-5xl font-bold text-gray-900 mb-6">OrderChad</h1>
+            <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+              Your Ultimate Retail Inventory & Order Management Solution. 
+              Streamline your retail operations with our comprehensive platform.
+            </p>
+            <div className="flex justify-center gap-4">
+              <Button size="lg" asChild>
+                <Link href="/auth/signin">Sign In</Link>
+              </Button>
+              <Button size="lg" variant="outline" asChild>
+                <Link href="/auth/register">Register</Link>
+              </Button>
+            </div>
+          </div>
+
+          {/* Features Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+            <Card className="text-center">
+              <CardHeader>
+                <div className="flex justify-center mb-4">
+                  <ShoppingBag size={40} className="text-blue-500" />
+                </div>
+                <CardTitle>Product Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">
+                  Easily manage your product catalog with powerful tools for adding, 
+                  updating, and organizing your inventory.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="text-center">
+              <CardHeader>
+                <div className="flex justify-center mb-4">
+                  <ShoppingCart size={40} className="text-green-500" />
+                </div>
+                <CardTitle>Order Processing</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">
+                  Streamline the entire order fulfillment process from placement 
+                  to delivery and manage returns efficiently.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="text-center">
+              <CardHeader>
+                <div className="flex justify-center mb-4">
+                  <Package size={40} className="text-purple-500" />
+                </div>
+                <CardTitle>Inventory Tracking</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">
+                  Keep track of stock levels in real-time, get alerts for low stock, 
+                  and generate comprehensive inventory reports.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="text-center">
+              <CardHeader>
+                <div className="flex justify-center mb-4">
+                  <Star size={40} className="text-yellow-500" />
+                </div>
+                <CardTitle>Customer Feedback</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">
+                  Collect and manage customer reviews and ratings to improve 
+                  your products and services.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Call to Action */}
+          <div className="bg-blue-50 p-8 rounded-lg text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Ready to optimize your retail business?
+            </h2>
+            <p className="text-lg text-gray-600 mb-6">
+              Join thousands of retailers who use OrderChad to streamline their operations.
+            </p>
+            <Button size="lg" asChild>
+              <Link href="/auth/register">Get Started Today</Link>
+            </Button>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+      </div>
+    );
+  }
+
+  // Authenticated user - show products
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+      <div className="max-w-6xl mx-auto px-4 py-16">
+        <div className="mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Product Catalog</h1>
+          <p className="text-lg text-gray-600">Browse our collection of products</p>
+        </div>
+
+        {/* Search and Filters */}
+        <div className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Input
+            placeholder="Search products..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger>
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {Object.values(ProductCategory).map((cat) => (
+                <SelectItem key={cat} value={cat}>
+                  {cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            type="number"
+            placeholder="Min Price"
+            value={minPrice}
+            onChange={(e) => setMinPrice(e.target.value)}
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
+          <Input
+            type="number"
+            placeholder="Max Price"
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(e.target.value)}
           />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </div>
+
+        {/* Products Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {loading ? (
+            <div className="col-span-full text-center">Loading products...</div>
+          ) : products.length === 0 ? (
+            <div className="col-span-full text-center">No products found</div>
+          ) : (
+            products.map((product) => (
+              <Card key={product.id}>
+                <CardHeader>
+                  <CardTitle>{product.name}</CardTitle>
+                  <CardDescription>{product.category}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {product.image ? (
+                    <Link href={`/products/${product.id}`} className="block">
+                      <div className="relative h-48 w-full mb-4 overflow-hidden rounded-md">
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-cover transition-transform hover:scale-105"
+                        />
+                      </div>
+                    </Link>
+                  ) : (
+                    <Link href={`/products/${product.id}`} className="block">
+                      <div className="relative h-48 w-full mb-4 bg-gray-100 rounded-md flex items-center justify-center">
+                        <div className="text-gray-400 flex flex-col items-center justify-center">
+                          <ShoppingBag size={32} />
+                          <p className="text-sm mt-2">No image available</p>
+                        </div>
+                      </div>
+                    </Link>
+                  )}
+                  <p className="text-gray-600 line-clamp-2">{product.description}</p>
+                  <p className="text-lg font-semibold mt-2">${product.price.toFixed(2)}</p>
+                  <p className="text-sm text-gray-500">
+                    {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+                  </p>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-2">
+                  <Button asChild className="w-full">
+                    <Link href={`/products/${product.id}`}>View Details</Link>
+                  </Button>
+                  {product.stock > 0 && (
+                    <Button 
+                      variant="secondary" 
+                      className="w-full"
+                      onClick={() => addToCart(product.id)}
+                      disabled={addingToCart === product.id}
+                    >
+                      {addingToCart === product.id ? 'Adding...' : 'Add to Cart'}
+                    </Button>
+                  )}
+                </CardFooter>
+              </Card>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }
